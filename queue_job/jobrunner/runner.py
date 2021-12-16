@@ -136,6 +136,8 @@ Caveat
 from contextlib import closing, contextmanager
 import datetime
 import logging
+import configparser
+import sys
 import os
 import select
 import threading
@@ -433,8 +435,24 @@ class QueueJobRunner(object):
                             job.db_name,
                             job.uuid)
 
+    def _check_allowed_db(self, db_name):
+        # See WorkerCron.process_work (odoo/service/server.py), same approach
+        cfg_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(sys.argv[0]))), 'odoo.cfg')
+        new_config = configparser.ConfigParser()
+        new_config.read(cfg_path)
+        allowed_cron_db = new_config['options'].get('allowed_cron_db')
+        skip_cron_db = new_config['options'].get('skip_cron_db')
+        allowed_cron_dbs = allowed_cron_db.split(',')
+        skip_cron_dbs = skip_cron_db.split(',')
+        if db_name in allowed_cron_dbs or allowed_cron_db == '*':
+            if db_name not in skip_cron_dbs:
+                return True
+        return False
+
     def process_notifications(self):
         for db in self.db_by_name.values():
+            if not self._check_allowed_db(db.db_name):
+                return
             if not db.conn.notifies:
                 # If there are no activity in the queue_job table it seems that
                 # tcp keepalives are not sent (in that very specific scenario),
