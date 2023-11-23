@@ -437,7 +437,7 @@ class QueueJobRunner(object):
 
     def _check_allowed_db(self, db_name):
         # See WorkerCron.process_work (odoo/service/server.py), same approach
-        cfg_path = os.path.join(os.path.abspath(os.path.dirname(os.path.dirname(sys.argv[0]))), 'odoo.cfg')
+        cfg_path = config.rcfile
         new_config = configparser.ConfigParser()
         new_config.read(cfg_path)
         allowed_cron_db = new_config['options'].get('allowed_cron_db')
